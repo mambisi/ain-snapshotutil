@@ -3,6 +3,7 @@ package main
 import (
 	"cloud.google.com/go/storage"
 	"context"
+	"fmt"
 	"google.golang.org/api/option"
 	"io"
 	"log"
@@ -68,10 +69,12 @@ func generateDockerfile(snapshot *storage.ObjectAttrs, teamDropBucket *storage.B
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("Downloading Snapshot ", BaseName(snapshot.Name))
 	_, err = io.Copy(snapshotFile, reader)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("Downloaded Snapshot ", BaseName(snapshot.Name))
 	dockerFilePath := filepath.Join(snapshotDir, "Dockerfile")
 	f, err := os.Open(filepath.Join(workingDir, "Dockerfile"))
 	defer f.Close()
@@ -84,7 +87,10 @@ func generateDockerfile(snapshot *storage.ObjectAttrs, teamDropBucket *storage.B
 		panic(err)
 	}
 	_, err = io.Copy(dockerFile, f)
+	fmt.Println("Created Dockerfile for Snapshot ", BaseName(snapshot.Name))
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Println("Finished ", BaseName(snapshot.Name))
 }
