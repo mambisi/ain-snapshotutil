@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 )
 
 func BaseName(filename string) string {
@@ -31,45 +32,59 @@ func main() {
 	teamDropBucket := client.Bucket("team-drop")
 
 	it := teamDropBucket.Objects(ctx, &storage.Query{Prefix: "master-datadir/datadir-", IncludeTrailingDelimiter: false})
+	var wg sync.WaitGroup
 	for {
-
 		snapshot, err := it.Next()
 		if err != nil {
 			break
 		}
-		snapshotDir := filepath.Join("datadir", BaseName(snapshot.Name))
-		err = os.MkdirAll(snapshotDir, os.ModePerm)
-		if err != nil {
-			panic(err)
-		}
-		snapshotObj := teamDropBucket.Object(snapshot.Name)
-		println(snapshotObj.ObjectName())
-		// Download snapshot, TODO : use aria2 to download snapshots
-		snapshotFilePath := filepath.Join(snapshotDir, "snapshot.tar.gz")
-		snapshotFile, err := os.Create(snapshotFilePath)
-		if err != nil {
-			panic(err)
-		}
-		reader, err := snapshotObj.NewReader(ctx)
-		if err != nil {
-			panic(err)
-		}
-		_, err = io.Copy(snapshotFile, reader)
-		if err != nil {
-			panic(err)
-		}
-		dockerFilePath := filepath.Join(snapshotDir, "Dockerfile")
-		f, err := os.Open(filepath.Join(workingDir, "Dockerfile"))
-		if err != nil {
-			panic(err)
-		}
-		dockerFile, err := os.Create(dockerFilePath)
-		if err != nil {
-			panic(err)
-		}
-		_, err = io.Copy(dockerFile, f)
-		if err != nil {
-			panic(err)
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			generateDockerfile(snapshot, teamDropBucket, ctx, workingDir)
+		}()
+
+	}
+	wg.Wait()
+}
+
+func generateDockerfile(snapshot *storage.ObjectAttrs, teamDropBucket *storage.BucketHandle, ctx context.Context, workingDir string) {
+	snapshotDir := filepath.Join("datadir", BaseName(snapshot.Name))
+	err := os.MkdirAll(snapshotDir, os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
+	snapshotObj := teamDropBucket.Object(snapshot.Name)
+	println(snapshotObj.ObjectName())
+	// Download snapshot, TODO : use aria2 to download snapshots
+	snapshotFilePath := filepath.Join(snapshotDir, "snapshot.tar.gz")
+	snapshotFile, err := os.Create(snapshotFilePath)
+	defer snapshotFile.Close()
+	if err != nil {
+		panic(err)
+	}
+	reader, err := snapshotObj.NewReader(ctx)
+	defer reader.Close()
+	if err != nil {
+		panic(err)
+	}
+	_, err = io.Copy(snapshotFile, reader)
+	if err != nil {
+		panic(err)
+	}
+	dockerFilePath := filepath.Join(snapshotDir, "Dockerfile")
+	f, err := os.Open(filepath.Join(workingDir, "Dockerfile"))
+	defer f.Close()
+	if err != nil {
+		panic(err)
+	}
+	dockerFile, err := os.Create(dockerFilePath)
+	defer dockerFile.Close()
+	if err != nil {
+		panic(err)
+	}
+	_, err = io.Copy(dockerFile, f)
+	if err != nil {
+		panic(err)
 	}
 }
