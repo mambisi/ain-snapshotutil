@@ -4,6 +4,7 @@ import (
 	"cloud.google.com/go/storage"
 	"context"
 	"fmt"
+	"github.com/joho/godotenv"
 	"google.golang.org/api/option"
 	"io"
 	"log"
@@ -21,12 +22,13 @@ func BaseName(filename string) string {
 }
 
 func main() {
+	err := godotenv.Load()
 	workingDir, err := os.Getwd()
 	if err != nil {
 		log.Println(err)
 	}
 	ctx := context.Background()
-	client, err := storage.NewClient(ctx, option.WithCredentialsFile("br-blockchains-dev.json"))
+	client, err := storage.NewClient(ctx, option.WithCredentialsFile(os.Getenv("SERVICE_FILE")))
 	if err != nil {
 		panic(err)
 	}
