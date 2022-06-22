@@ -1,2 +1,2 @@
 FROM ubuntu
-ADD snapshot.tar.gz .defi
+ADD snapshot.tar.gz /
