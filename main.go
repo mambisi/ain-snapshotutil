@@ -58,13 +58,13 @@ func main() {
 		service := Service{
 			Build: buildConfig,
 		}
-		service.Ports = []Port{NewPort(uint(port), 8554)}
+		service.Ports = []Port{NewPort(8554, uint(port))}
 		port++
 		composeFile.AddService(BaseName(snapshot.Name), service)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			//generateDockerfile(snapshot, teamDropBucket, ctx, workingDir, rootDockerDir)
+			generateDockerfile(snapshot, teamDropBucket, ctx, workingDir, rootDockerDir)
 			fmt.Println(workingDir)
 		}()
 
