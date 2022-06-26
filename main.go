@@ -51,8 +51,9 @@ func main() {
 		if err != nil {
 			break
 		}
+		snapshotName := BaseName(snapshot.Name)
 		buildConfig := NewBuildConfigBuilder().
-			Context(filepath.Join("./")).
+			Context(fmt.Sprintf("./%s", snapshotName)).
 			WithArg("defid_exec", "${DEFID_EXEC}").
 			Build()
 
@@ -61,7 +62,7 @@ func main() {
 		}
 		service.Ports = []Port{NewPort(8554, uint(port))}
 		port++
-		composeFile.AddService(BaseName(snapshot.Name), service)
+		composeFile.AddService(snapshotName, service)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
