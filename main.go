@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"cloud.google.com/go/storage"
 	"context"
 	"fmt"
 	"github.com/joho/godotenv"
 	"google.golang.org/api/option"
+	"gopkg.in/yaml.v3"
 	"io"
 	"log"
 	"os"
@@ -33,26 +35,60 @@ func main() {
 		panic(err)
 	}
 	teamDropBucket := client.Bucket("team-drop")
+	rootDockerDir := filepath.Join("docker")
+	err = os.MkdirAll(rootDockerDir, os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
 
 	it := teamDropBucket.Objects(ctx, &storage.Query{Prefix: "master-datadir/datadir-", IncludeTrailingDelimiter: false})
+	composeFile := NewComposeFile()
 	var wg sync.WaitGroup
+	var port = 3000
 	for {
 		snapshot, err := it.Next()
 		if err != nil {
 			break
 		}
+		buildConfig := NewBuildConfigBuilder().
+			Context(filepath.Join("./")).
+			WithArg("defid_exec", "${DEFID_EXEC}").
+			Build()
+
+		service := Service{
+			Build: buildConfig,
+		}
+		service.Ports = []Port{NewPort(uint(port), 8554)}
+		port++
+		composeFile.AddService(BaseName(snapshot.Name), service)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			generateDockerfile(snapshot, teamDropBucket, ctx, workingDir)
+			//generateDockerfile(snapshot, teamDropBucket, ctx, workingDir, rootDockerDir)
+			fmt.Println(workingDir)
 		}()
 
 	}
 	wg.Wait()
+	out, err := yaml.Marshal(composeFile)
+	if err != nil {
+		panic(err)
+	}
+	dockerComposeFile, err := os.Create(filepath.Join(rootDockerDir, "docker-compose.yml"))
+	defer dockerComposeFile.Close()
+	w := bufio.NewWriter(dockerComposeFile)
+	_, err = w.Write(out)
+	if err != nil {
+		panic(err)
+	}
+	err = w.Flush()
+	if err != nil {
+		panic(err)
+	}
 }
 
-func generateDockerfile(snapshot *storage.ObjectAttrs, teamDropBucket *storage.BucketHandle, ctx context.Context, workingDir string) {
-	snapshotDir := filepath.Join("datadir", BaseName(snapshot.Name))
+func generateDockerfile(snapshot *storage.ObjectAttrs, teamDropBucket *storage.BucketHandle, ctx context.Context, workingDir string, rootDir string) {
+	snapshotDir := filepath.Join(rootDir, BaseName(snapshot.Name))
 	err := os.MkdirAll(snapshotDir, os.ModePerm)
 	if err != nil {
 		panic(err)
@@ -71,12 +107,10 @@ func generateDockerfile(snapshot *storage.ObjectAttrs, teamDropBucket *storage.B
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Downloading Snapshot ", BaseName(snapshot.Name))
 	_, err = io.Copy(snapshotFile, reader)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Downloaded Snapshot ", BaseName(snapshot.Name))
 	dockerFilePath := filepath.Join(snapshotDir, "Dockerfile")
 	f, err := os.Open(filepath.Join(workingDir, "Dockerfile"))
 	defer f.Close()
@@ -89,10 +123,7 @@ func generateDockerfile(snapshot *storage.ObjectAttrs, teamDropBucket *storage.B
 		panic(err)
 	}
 	_, err = io.Copy(dockerFile, f)
-	fmt.Println("Created Dockerfile for Snapshot ", BaseName(snapshot.Name))
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Println("Finished ", BaseName(snapshot.Name))
 }
