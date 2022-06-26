@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"cloud.google.com/go/storage"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/joho/godotenv"
 	"google.golang.org/api/option"
@@ -65,7 +66,6 @@ func main() {
 		go func() {
 			defer wg.Done()
 			generateDockerfile(snapshot, teamDropBucket, ctx, workingDir, rootDockerDir)
-			fmt.Println(workingDir)
 		}()
 
 	}
@@ -87,6 +87,17 @@ func main() {
 	}
 }
 
+func Exists(name string) (bool, error) {
+	_, err := os.Stat(name)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
+}
+
 func generateDockerfile(snapshot *storage.ObjectAttrs, teamDropBucket *storage.BucketHandle, ctx context.Context, workingDir string, rootDir string) {
 	snapshotDir := filepath.Join(rootDir, BaseName(snapshot.Name))
 	err := os.MkdirAll(snapshotDir, os.ModePerm)
@@ -94,22 +105,25 @@ func generateDockerfile(snapshot *storage.ObjectAttrs, teamDropBucket *storage.B
 		panic(err)
 	}
 	snapshotObj := teamDropBucket.Object(snapshot.Name)
-	println(snapshotObj.ObjectName())
 	// Download snapshot, TODO : use aria2 to download snapshots
 	snapshotFilePath := filepath.Join(snapshotDir, "snapshot.tar.gz")
-	snapshotFile, err := os.Create(snapshotFilePath)
-	defer snapshotFile.Close()
-	if err != nil {
-		panic(err)
-	}
-	reader, err := snapshotObj.NewReader(ctx)
-	defer reader.Close()
-	if err != nil {
-		panic(err)
-	}
-	_, err = io.Copy(snapshotFile, reader)
-	if err != nil {
-		panic(err)
+	fileExists, err := Exists(snapshotDir)
+	// Prevent Re-download
+	if !fileExists || err != nil {
+		snapshotFile, err := os.Create(snapshotFilePath)
+		defer snapshotFile.Close()
+		if err != nil {
+			panic(err)
+		}
+		reader, err := snapshotObj.NewReader(ctx)
+		defer reader.Close()
+		if err != nil {
+			panic(err)
+		}
+		_, err = io.Copy(snapshotFile, reader)
+		if err != nil {
+			panic(err)
+		}
 	}
 	dockerFilePath := filepath.Join(snapshotDir, "Dockerfile")
 	f, err := os.Open(filepath.Join(workingDir, "Dockerfile"))
@@ -126,4 +140,5 @@ func generateDockerfile(snapshot *storage.ObjectAttrs, teamDropBucket *storage.B
 	if err != nil {
 		panic(err)
 	}
+	fmt.Printf("Finished downloading %s \n", BaseName(snapshot.Name))
 }
