@@ -87,7 +87,6 @@ func main() {
 		stopBlock := startBlock + 50000
 		buildConfig := NewBuildConfigBuilder().
 			Context(fmt.Sprintf("./%s", snapshotName)).
-			WithArg("defid_exec", "${DEFID_EXEC}").
 			WithArg("stop-block", fmt.Sprintf("%v", stopBlock)).
 			Build()
 
