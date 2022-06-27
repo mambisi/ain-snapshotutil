@@ -14,6 +14,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -52,15 +54,23 @@ func main() {
 			break
 		}
 		snapshotName := BaseName(snapshot.Name)
+		split := strings.Split(snapshotName, "-")
+		startBlock, err := strconv.Atoi(split[1])
+		if err != nil {
+			panic(err)
+		}
+		stopBlock := startBlock + 50000
 		buildConfig := NewBuildConfigBuilder().
 			Context(fmt.Sprintf("./%s", snapshotName)).
 			WithArg("defid_exec", "${DEFID_EXEC}").
+			WithArg("stop-block", fmt.Sprintf("%v", stopBlock)).
 			Build()
 
 		service := Service{
 			Build: buildConfig,
 		}
 		service.Ports = []Port{NewPort(8554, uint(port))}
+		service.CustomFields = map[string]interface{}{"restart": "on-failure"}
 		port++
 		composeFile.AddService(snapshotName, service)
 		wg.Add(1)
