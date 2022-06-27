@@ -5,6 +5,7 @@ import (
 	"cloud.google.com/go/storage"
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/joho/godotenv"
 	"google.golang.org/api/option"
@@ -26,7 +27,31 @@ func BaseName(filename string) string {
 	return name
 }
 
+func OSCopyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+	return out.Close()
+}
+
 func main() {
+
+	defidExec := flag.String("defid-exec", "", "defid executable location")
+	flag.Parse()
+
 	err := godotenv.Load()
 	workingDir, err := os.Getwd()
 	if err != nil {
@@ -76,7 +101,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			generateDockerfile(snapshot, teamDropBucket, ctx, workingDir, rootDockerDir)
+			generateDockerfile(snapshot, *defidExec, teamDropBucket, ctx, workingDir, rootDockerDir)
 		}()
 
 	}
@@ -109,7 +134,7 @@ func Exists(name string) (bool, error) {
 	return false, err
 }
 
-func generateDockerfile(snapshot *storage.ObjectAttrs, teamDropBucket *storage.BucketHandle, ctx context.Context, workingDir string, rootDir string) {
+func generateDockerfile(snapshot *storage.ObjectAttrs, defidExec string, teamDropBucket *storage.BucketHandle, ctx context.Context, workingDir string, rootDir string) {
 	snapshotDir := filepath.Join(rootDir, BaseName(snapshot.Name))
 	err := os.MkdirAll(snapshotDir, os.ModePerm)
 	if err != nil {
@@ -137,6 +162,11 @@ func generateDockerfile(snapshot *storage.ObjectAttrs, teamDropBucket *storage.B
 		}
 	}
 	dockerFilePath := filepath.Join(snapshotDir, "Dockerfile")
+	defidExecPath := filepath.Join(snapshotDir, "defid")
+	err = OSCopyFile(defidExec, defidExecPath)
+	if err != nil {
+		panic(err)
+	}
 	f, err := os.Open(filepath.Join(workingDir, "Dockerfile"))
 	defer f.Close()
 	if err != nil {
