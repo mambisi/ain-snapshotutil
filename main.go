@@ -87,7 +87,8 @@ func main() {
 		stopBlock := startBlock + 50000
 		buildConfig := NewBuildConfigBuilder().
 			Context(fmt.Sprintf("./%s", snapshotName)).
-			WithArg("stop-block", fmt.Sprintf("%v", stopBlock)).
+			WithArg("stop_block", fmt.Sprintf("%v", stopBlock)).
+			WithArg("volume_name", snapshotName).
 			Build()
 
 		service := Service{
