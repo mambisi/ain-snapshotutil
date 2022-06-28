@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"text/template"
 )
 
 func BaseName(filename string) string {
@@ -47,6 +48,10 @@ func OSCopyFile(src, dst string) error {
 	return out.Close()
 }
 
+type TemplateArgs struct {
+	StopBlock uint
+}
+
 func main() {
 
 	defidExec := flag.String("defid-exec", "", "defid executable location")
@@ -73,6 +78,16 @@ func main() {
 	composeFile := NewComposeFile()
 	var wg sync.WaitGroup
 	var port = 3000
+
+	b, err := os.ReadFile(filepath.Join(workingDir, "Dockerfile.template"))
+	if err != nil {
+		panic(err)
+	}
+	tmpl, err := template.New("test").Parse(string(b))
+	if err != nil {
+		panic(err)
+	}
+
 	for {
 		snapshot, err := it.Next()
 		if err != nil {
@@ -87,7 +102,6 @@ func main() {
 		stopBlock := startBlock + 50000
 		buildConfig := NewBuildConfigBuilder().
 			Context(fmt.Sprintf("./%s", snapshotName)).
-			WithArg("stop_block", fmt.Sprintf("%v", stopBlock)).
 			WithArg("volume_name", snapshotName).
 			Build()
 
@@ -99,9 +113,12 @@ func main() {
 		port++
 		composeFile.AddService(snapshotName, service)
 		wg.Add(1)
+
+		a := TemplateArgs{StopBlock: uint(stopBlock)}
+
 		go func() {
 			defer wg.Done()
-			generateDockerfile(snapshot, *defidExec, teamDropBucket, ctx, workingDir, rootDockerDir)
+			generateDockerfile(tmpl, snapshot, *defidExec, a, teamDropBucket, ctx, workingDir, rootDockerDir)
 		}()
 
 	}
@@ -134,7 +151,7 @@ func Exists(name string) (bool, error) {
 	return false, err
 }
 
-func generateDockerfile(snapshot *storage.ObjectAttrs, defidExec string, teamDropBucket *storage.BucketHandle, ctx context.Context, workingDir string, rootDir string) {
+func generateDockerfile(tmpl *template.Template, snapshot *storage.ObjectAttrs, defidExec string, args TemplateArgs, teamDropBucket *storage.BucketHandle, ctx context.Context, workingDir string, rootDir string) {
 	snapshotDir := filepath.Join(rootDir, BaseName(snapshot.Name))
 	err := os.MkdirAll(snapshotDir, os.ModePerm)
 	if err != nil {
@@ -167,17 +184,12 @@ func generateDockerfile(snapshot *storage.ObjectAttrs, defidExec string, teamDro
 		panic(err)
 	}
 	dockerFilePath := filepath.Join(snapshotDir, "Dockerfile")
-	f, err := os.Open(filepath.Join(workingDir, "Dockerfile"))
-	defer f.Close()
-	if err != nil {
-		panic(err)
-	}
 	dockerFile, err := os.Create(dockerFilePath)
 	defer dockerFile.Close()
 	if err != nil {
 		panic(err)
 	}
-	_, err = io.Copy(dockerFile, f)
+	err = tmpl.Execute(dockerFile, args)
 	if err != nil {
 		panic(err)
 	}
