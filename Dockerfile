@@ -3,9 +3,9 @@ WORKDIR node
 ARG stop_block
 ARG volume_name
 RUN useradd --create-home defi && \
-    mkdir -p /data && \
+    mkdir -p "/${volume_name}" && \
     chown defi:defi "/${volume_name}" && \
-    ln -s /data /home/defi/.defi
+    ln -s "/${volume_name}" /home/defi/.defi
 RUN adduser defi sudo
 ADD snapshot.tar.gz /data
 RUN rm -rf "/${volume_name}/.lock"
