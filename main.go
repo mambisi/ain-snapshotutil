@@ -161,12 +161,12 @@ func generateDockerfile(snapshot *storage.ObjectAttrs, defidExec string, teamDro
 			panic(err)
 		}
 	}
-	dockerFilePath := filepath.Join(snapshotDir, "Dockerfile")
 	defidExecPath := filepath.Join(snapshotDir, "defid")
 	err = OSCopyFile(defidExec, defidExecPath)
 	if err != nil {
 		panic(err)
 	}
+	dockerFilePath := filepath.Join(snapshotDir, "Dockerfile")
 	f, err := os.Open(filepath.Join(workingDir, "Dockerfile"))
 	defer f.Close()
 	if err != nil {
