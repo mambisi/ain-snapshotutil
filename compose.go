@@ -27,14 +27,12 @@ type BuildConfig struct {
 	Context    string            `yaml:"context"`
 	Dockerfile string            `yaml:"dockerfile"`
 	Args       map[string]string `yaml:"args"`
-	Envs       map[string]string `yaml:"environment"`
 }
 
 type IBuildConfigBuilder interface {
 	Context(name string) IBuildConfigBuilder
 	Docker(name string) IBuildConfigBuilder
 	WithArg(key, value string) IBuildConfigBuilder
-	WithEnv(key, value string) IBuildConfigBuilder
 	Build() BuildConfig
 }
 
@@ -42,12 +40,6 @@ type buildConfigBuilder struct {
 	context string
 	docker  string
 	args    map[string]string
-	envs    map[string]string
-}
-
-func (b *buildConfigBuilder) WithEnv(key, value string) IBuildConfigBuilder {
-	b.envs[key] = value
-	return b
 }
 
 func (b *buildConfigBuilder) Context(name string) IBuildConfigBuilder {
@@ -61,7 +53,7 @@ func (b *buildConfigBuilder) Docker(name string) IBuildConfigBuilder {
 }
 
 func NewBuildConfigBuilder() IBuildConfigBuilder {
-	return &buildConfigBuilder{context: ".", docker: "Dockerfile", args: map[string]string{}, envs: map[string]string{}}
+	return &buildConfigBuilder{context: ".", docker: "Dockerfile", args: map[string]string{}}
 }
 
 func (b *buildConfigBuilder) WithArg(key, value string) IBuildConfigBuilder {
@@ -74,7 +66,6 @@ func (b *buildConfigBuilder) Build() BuildConfig {
 		Context:    b.context,
 		Dockerfile: b.docker,
 		Args:       b.args,
-		Envs:       b.envs,
 	}
 }
 
