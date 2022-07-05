@@ -160,23 +160,21 @@ func generateDockerfile(tmpl *template.Template, snapshot *storage.ObjectAttrs, 
 	snapshotObj := teamDropBucket.Object(snapshot.Name)
 	// Download snapshot, TODO : use aria2 to download snapshots
 	snapshotFilePath := filepath.Join(snapshotDir, "snapshot.tar.gz")
-	fileExists, err := Exists(snapshotDir)
+	//fileExists, err := Exists(snapshotDir)
 	// Prevent Re-download
-	if !fileExists || err != nil {
-		snapshotFile, err := os.Create(snapshotFilePath)
-		defer snapshotFile.Close()
-		if err != nil {
-			panic(err)
-		}
-		reader, err := snapshotObj.NewReader(ctx)
-		defer reader.Close()
-		if err != nil {
-			panic(err)
-		}
-		_, err = io.Copy(snapshotFile, reader)
-		if err != nil {
-			panic(err)
-		}
+	snapshotFile, err := os.Create(snapshotFilePath)
+	defer snapshotFile.Close()
+	if err != nil {
+		panic(err)
+	}
+	reader, err := snapshotObj.NewReader(ctx)
+	defer reader.Close()
+	if err != nil {
+		panic(err)
+	}
+	_, err = io.Copy(snapshotFile, reader)
+	if err != nil {
+		panic(err)
 	}
 	defidExecPath := filepath.Join(snapshotDir, "defid")
 	err = OSCopyFile(defidExec, defidExecPath)
