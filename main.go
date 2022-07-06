@@ -55,7 +55,7 @@ type TemplateArgs struct {
 func main() {
 
 	defidExec := flag.String("defid", "", "defid executable location")
-	downloadSnap := flag.Bool("download", true, "set to false to prevent download")
+	downloadSnap := flag.Bool("download", false, "download snapshots")
 	defiCliExec := flag.String("deficli", "", "defid-cli executable location")
 	flag.Parse()
 
