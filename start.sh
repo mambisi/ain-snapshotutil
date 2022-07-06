@@ -17,7 +17,7 @@ while [ $block -lt "$STOP_BLOCK" ]; do
   if [ "$block" -eq "$b" ]; then
     attempts=$((attempts + 1))
     # revive defid
-    echo "===> Revive Defid"
+    echo "===> Attempt[$attempts/1200] to revive Defid"
     ./defid -daemon -stop-block="$STOP_BLOCK"
     sleep 30
     else
