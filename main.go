@@ -54,7 +54,7 @@ type TemplateArgs struct {
 
 func main() {
 
-	defidExec := flag.String("defid-exec", "", "defid executable location")
+	defidExec := flag.String("defid", "", "defid executable location")
 	defiCliExec := flag.String("deficli", "", "defid-cli executable location")
 	flag.Parse()
 
