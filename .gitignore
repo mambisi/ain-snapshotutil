@@ -1,4 +1,5 @@
 br-blockchains-dev.json
 datadir/
 docker/
+ignore/
 .env

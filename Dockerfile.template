@@ -13,8 +13,12 @@ RUN rm -rf "/${volume_name}/wallet.dat"
 RUN ls -lh "/${volume_name}"
 RUN chown -R defi:defi "/${volume_name}"
 COPY defid defid
+COPY defi-cli defi-cli
+COPY start.sh start.sh
 VOLUME ["/${volume_name}"]
 RUN chmod +x /node/defid
+RUN chmod +x /node/defi-cli
+RUN chmod +x /node/start.sh
 USER defi:defi
-ENTRYPOINT ["/node/defid", "-stop-block={{.StopBlock}}","-interrupt-block={{.StopBlock}}"]
 EXPOSE 8555 8554 18555 18554 19555 19554
+ENTRYPOINT ["STOP_BLOCK={{.StopBlock}}", "./start.sh"]

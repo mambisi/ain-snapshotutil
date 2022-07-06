@@ -29,6 +29,17 @@ type BuildConfig struct {
 	Args       map[string]string `yaml:"args"`
 }
 
+type DeployConfig struct {
+	RestartPolicy RestartPolicy `yaml:"restart_policy"`
+}
+
+type RestartPolicy struct {
+	Condition   string `yaml:"condition,omitempty"`
+	Delay       string `yaml:"delay,omitempty"`
+	MaxAttempts uint   `yaml:"max_attempts,omitempty"`
+	Window      string `yaml:"window,omitempty"`
+}
+
 type IBuildConfigBuilder interface {
 	Context(name string) IBuildConfigBuilder
 	Docker(name string) IBuildConfigBuilder
@@ -75,6 +86,7 @@ type Service struct {
 	Ports        []Port                 `yaml:"ports,omitempty"`
 	Volumes      []Volume               `yaml:"volumes,omitempty"`
 	Links        []string               `yaml:"links,omitempty"`
+	Deploy       DeployConfig           `yaml:"deploy,omitempty"`
 	CustomFields map[string]interface{} `yaml:",inline,omitempty"`
 }
 

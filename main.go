@@ -55,6 +55,7 @@ type TemplateArgs struct {
 func main() {
 
 	defidExec := flag.String("defid-exec", "", "defid executable location")
+	defiCliExec := flag.String("deficli", "", "defid-cli executable location")
 	flag.Parse()
 
 	err := godotenv.Load()
@@ -109,7 +110,14 @@ func main() {
 			Build: buildConfig,
 		}
 		service.Ports = []Port{NewPort(8554, uint(port))}
-		service.CustomFields = map[string]interface{}{"restart": "on-failure"}
+		service.Deploy = DeployConfig{
+			RestartPolicy: RestartPolicy{
+				Condition:   "on-failure",
+				Delay:       "1m",
+				MaxAttempts: 40,
+				Window:      "120s",
+			},
+		}
 		port++
 		composeFile.AddService(snapshotName, service)
 		wg.Add(1)
@@ -118,7 +126,7 @@ func main() {
 
 		go func() {
 			defer wg.Done()
-			generateDockerfile(tmpl, snapshot, *defidExec, a, teamDropBucket, ctx, workingDir, rootDockerDir)
+			generateDockerfile(tmpl, snapshot, *defidExec, *defiCliExec, a, teamDropBucket, ctx, workingDir, rootDockerDir)
 		}()
 
 	}
@@ -151,7 +159,7 @@ func Exists(name string) (bool, error) {
 	return false, err
 }
 
-func generateDockerfile(tmpl *template.Template, snapshot *storage.ObjectAttrs, defidExec string, args TemplateArgs, teamDropBucket *storage.BucketHandle, ctx context.Context, workingDir string, rootDir string) {
+func generateDockerfile(tmpl *template.Template, snapshot *storage.ObjectAttrs, defidExec, defiCli string, args TemplateArgs, teamDropBucket *storage.BucketHandle, ctx context.Context, workingDir string, rootDir string) {
 	snapshotDir := filepath.Join(rootDir, BaseName(snapshot.Name))
 	err := os.MkdirAll(snapshotDir, os.ModePerm)
 	if err != nil {
@@ -176,8 +184,15 @@ func generateDockerfile(tmpl *template.Template, snapshot *storage.ObjectAttrs, 
 	if err != nil {
 		panic(err)
 	}
-	defidExecPath := filepath.Join(snapshotDir, "defid")
-	err = OSCopyFile(defidExec, defidExecPath)
+	err = OSCopyFile(defidExec, filepath.Join(snapshotDir, "defid"))
+	if err != nil {
+		panic(err)
+	}
+	err = OSCopyFile(defiCli, filepath.Join(snapshotDir, "defid-cli"))
+	if err != nil {
+		panic(err)
+	}
+	err = OSCopyFile(filepath.Join(workingDir, "start.sh"), filepath.Join(snapshotDir, "start.sh"))
 	if err != nil {
 		panic(err)
 	}
