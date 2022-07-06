@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"io"
 	"log"
+	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -56,6 +57,8 @@ func main() {
 
 	defidExec := flag.String("defid", "", "defid executable location")
 	downloadSnap := flag.Bool("download", false, "download snapshots")
+	minHeight := flag.Uint64("min-height", 0, "minimum snapshot height")
+	maxHeight := flag.Uint64("max-height", math.MaxUint64, "minimum snapshot height")
 	defiCliExec := flag.String("deficli", "", "defid-cli executable location")
 	flag.Parse()
 
@@ -101,7 +104,11 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		stopBlock := startBlock + 50000
+
+		if uint64(startBlock) < *minHeight || uint64(startBlock) > *maxHeight {
+			continue
+		}
+		stopBlock := startBlock + 50000 + 10
 		buildConfig := NewBuildConfigBuilder().
 			Context(fmt.Sprintf("./%s", snapshotName)).
 			WithArg("volume_name", snapshotName).
@@ -114,9 +121,9 @@ func main() {
 		service.Deploy = DeployConfig{
 			RestartPolicy: RestartPolicy{
 				Condition:   "on-failure",
-				Delay:       "1m",
+				Delay:       "10s",
 				MaxAttempts: 40,
-				Window:      "120s",
+				Window:      "10s",
 			},
 		}
 		port++
