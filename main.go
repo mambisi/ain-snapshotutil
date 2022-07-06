@@ -119,7 +119,7 @@ func main() {
 		if !pRange.InRange(uint64(startBlock)) {
 			continue
 		}
-		stopBlock := startBlock + int(*nBlocks) + 5
+		stopBlock := startBlock + int(*nBlocks) + 1
 		buildConfig := NewBuildConfigBuilder().
 			Context(fmt.Sprintf("./%s", snapshotName)).
 			WithArg("volume_name", snapshotName).

@@ -1,10 +1,10 @@
 #!/bin/bash
 echo "Syncing to block height: $STOP_BLOCK"
-
+STOP_BLOCK_P=$((STOP_BLOCK + 5))
 block=0
 attempts=0
 
-./defid -daemon -stop-block="$STOP_BLOCK"
+./defid -daemon -stop-block="$STOP_BLOCK_P"
 sleep 30
 while [ $block -lt "$STOP_BLOCK" ]; do
   sleep 1
@@ -18,7 +18,7 @@ while [ $block -lt "$STOP_BLOCK" ]; do
     attempts=$((attempts + 1))
     # revive defid
     echo "===> Attempt[$attempts/1200] to revive Defid"
-    ./defid -daemon -stop-block="$STOP_BLOCK"
+    ./defid -daemon -stop-block="$STOP_BLOCK_P"
     sleep 30
     else
     attempts=0
