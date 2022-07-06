@@ -55,6 +55,7 @@ type TemplateArgs struct {
 func main() {
 
 	defidExec := flag.String("defid", "", "defid executable location")
+	downloadSnap := flag.Bool("download", true, "set to false to prevent download")
 	defiCliExec := flag.String("deficli", "", "defid-cli executable location")
 	flag.Parse()
 
@@ -126,7 +127,7 @@ func main() {
 
 		go func() {
 			defer wg.Done()
-			generateDockerfile(tmpl, snapshot, *defidExec, *defiCliExec, a, teamDropBucket, ctx, workingDir, rootDockerDir)
+			generateDockerfile(tmpl, snapshot, *defidExec, *defiCliExec, *downloadSnap, a, teamDropBucket, ctx, workingDir, rootDockerDir)
 		}()
 
 	}
@@ -159,30 +160,32 @@ func Exists(name string) (bool, error) {
 	return false, err
 }
 
-func generateDockerfile(tmpl *template.Template, snapshot *storage.ObjectAttrs, defidExec, defiCli string, args TemplateArgs, teamDropBucket *storage.BucketHandle, ctx context.Context, workingDir string, rootDir string) {
+func generateDockerfile(tmpl *template.Template, snapshot *storage.ObjectAttrs, defidExec, defiCli string, downloadSnap bool, args TemplateArgs, teamDropBucket *storage.BucketHandle, ctx context.Context, workingDir string, rootDir string) {
 	snapshotDir := filepath.Join(rootDir, BaseName(snapshot.Name))
 	err := os.MkdirAll(snapshotDir, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
-	snapshotObj := teamDropBucket.Object(snapshot.Name)
-	// Download snapshot, TODO : use aria2 to download snapshots
-	snapshotFilePath := filepath.Join(snapshotDir, "snapshot.tar.gz")
-	//fileExists, err := Exists(snapshotDir)
-	// Prevent Re-download
-	snapshotFile, err := os.Create(snapshotFilePath)
-	defer snapshotFile.Close()
-	if err != nil {
-		panic(err)
-	}
-	reader, err := snapshotObj.NewReader(ctx)
-	defer reader.Close()
-	if err != nil {
-		panic(err)
-	}
-	_, err = io.Copy(snapshotFile, reader)
-	if err != nil {
-		panic(err)
+	if downloadSnap {
+		snapshotObj := teamDropBucket.Object(snapshot.Name)
+		// Download snapshot, TODO : use aria2 to download snapshots
+		snapshotFilePath := filepath.Join(snapshotDir, "snapshot.tar.gz")
+		//fileExists, err := Exists(snapshotDir)
+		// Prevent Re-download
+		snapshotFile, err := os.Create(snapshotFilePath)
+		defer snapshotFile.Close()
+		if err != nil {
+			panic(err)
+		}
+		reader, err := snapshotObj.NewReader(ctx)
+		defer reader.Close()
+		if err != nil {
+			panic(err)
+		}
+		_, err = io.Copy(snapshotFile, reader)
+		if err != nil {
+			panic(err)
+		}
 	}
 	err = OSCopyFile(defidExec, filepath.Join(snapshotDir, "defid"))
 	if err != nil {
