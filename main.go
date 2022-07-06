@@ -12,7 +12,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"io"
 	"log"
-	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -64,14 +63,17 @@ func main() {
 	serviceFile := flag.String("service-file", os.Getenv("SERVICE_FILE"), "gcp service file")
 	exec := flag.String("defid", "", "defid executable location")
 	downloadSnap := flag.Bool("download", false, "download snapshots")
-	minHeight := flag.Uint64("min-height", 0, "minimum snapshot height")
-	maxHeight := flag.Uint64("max-height", math.MaxUint64, "minimum snapshot height")
+	r := flag.String("range", "..", "snapshot range eg. 100000..500000 or specific snapshots eg. 100000,400000,600000")
 	nBlocks := flag.Uint64("nblocks", 50000, "number of block to sync to from snapshot height")
 	cli := flag.String("deficli", "", "defid-cli executable location")
 	flag.Parse()
 
 	ctx := context.Background()
 	client, err := storage.NewClient(ctx, option.WithCredentialsFile(*serviceFile))
+	if err != nil {
+		panic(err)
+	}
+	pRange, err := ParseRange(*r)
 	if err != nil {
 		panic(err)
 	}
@@ -114,8 +116,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-
-		if uint64(startBlock) < *minHeight || uint64(startBlock) > *maxHeight {
+		if !pRange.InRange(uint64(startBlock)) {
 			continue
 		}
 		stopBlock := startBlock + int(*nBlocks) + 5
