@@ -10,7 +10,6 @@ while [ $block -lt "$STOP_BLOCK" ]; do
   sleep 1
   if [ $attempts -gt 1200 ]; then
     echo "Node Stuck After $attempts Recovery Attempt"
-
     exit 1
   fi
   h=$(./defi-cli getblockcount)

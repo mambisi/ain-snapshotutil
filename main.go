@@ -98,7 +98,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	template, err := template.New("test").Parse(string(b))
+	tmpl, err := template.New("test").Parse(string(b))
 	if err != nil {
 		panic(err)
 	}
@@ -145,7 +145,7 @@ func main() {
 		args := TemplateArgs{StopBlock: uint(stopBlock)}
 		go func() {
 			defer wg.Done()
-			generateDockerContainer(ctx, snapshot, teamDropBucket, template, args, *exec, *cli, *downloadSnap)
+			generateDockerContainer(ctx, snapshot, teamDropBucket, tmpl, args, *exec, *cli, *downloadSnap)
 		}()
 
 	}
@@ -184,7 +184,7 @@ func Exists(name string) (bool, error) {
 	return false, err
 }
 
-func generateDockerContainer(ctx context.Context, snapshot *storage.ObjectAttrs, teamDropBucket *storage.BucketHandle, template *template.Template, args TemplateArgs, exec, cli string, download bool) {
+func generateDockerContainer(ctx context.Context, snapshot *storage.ObjectAttrs, teamDropBucket *storage.BucketHandle, tmpl *template.Template, args TemplateArgs, exec, cli string, download bool) {
 	var workingDir = ctx.Value("workingDir").(string)
 	var rootDir = ctx.Value("rootDir").(string)
 	snapshotDir := filepath.Join(rootDir, BaseName(snapshot.Name))
@@ -231,7 +231,7 @@ func generateDockerContainer(ctx context.Context, snapshot *storage.ObjectAttrs,
 	if err != nil {
 		panic(err)
 	}
-	err = template.Execute(dockerFile, args)
+	err = tmpl.Execute(dockerFile, args)
 	if err != nil {
 		panic(err)
 	}
