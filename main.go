@@ -54,26 +54,28 @@ type TemplateArgs struct {
 }
 
 func main() {
-
-	defidExec := flag.String("defid", "", "defid executable location")
-	downloadSnap := flag.Bool("download", false, "download snapshots")
-	minHeight := flag.Uint64("min-height", 0, "minimum snapshot height")
-	maxHeight := flag.Uint64("max-height", math.MaxUint64, "minimum snapshot height")
-	defiCliExec := flag.String("deficli", "", "defid-cli executable location")
-	flag.Parse()
-
 	err := godotenv.Load()
 	workingDir, err := os.Getwd()
 	if err != nil {
 		log.Println(err)
 	}
+
+	outDir := flag.String("out-dir", filepath.Join(workingDir, "docker"), "docker output directory")
+	defidExec := flag.String("defid", "", "defid executable location")
+	downloadSnap := flag.Bool("download", false, "download snapshots")
+	minHeight := flag.Uint64("min-height", 0, "minimum snapshot height")
+	maxHeight := flag.Uint64("max-height", math.MaxUint64, "minimum snapshot height")
+	nBlocks := flag.Uint64("nblocks", 50000, "number of block to sync to from snapshot height")
+	defiCliExec := flag.String("deficli", "", "defid-cli executable location")
+	flag.Parse()
+
 	ctx := context.Background()
 	client, err := storage.NewClient(ctx, option.WithCredentialsFile(os.Getenv("SERVICE_FILE")))
 	if err != nil {
 		panic(err)
 	}
 	teamDropBucket := client.Bucket("team-drop")
-	rootDockerDir := filepath.Join("docker")
+	rootDockerDir := *outDir
 	err = os.MkdirAll(rootDockerDir, os.ModePerm)
 	if err != nil {
 		panic(err)
@@ -108,7 +110,7 @@ func main() {
 		if uint64(startBlock) < *minHeight || uint64(startBlock) > *maxHeight {
 			continue
 		}
-		stopBlock := startBlock + 50000 + 10
+		stopBlock := startBlock + int(*nBlocks) + 5
 		buildConfig := NewBuildConfigBuilder().
 			Context(fmt.Sprintf("./%s", snapshotName)).
 			WithArg("volume_name", snapshotName).
