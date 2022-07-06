@@ -24,7 +24,7 @@ while [ $block -lt "$STOP_BLOCK" ]; do
     attempts=0
   fi
   block=${b:-$block}
-  echo "===> Block Height $block"
+  echo "===> Block Height [$block/$STOP_BLOCK]"
 done
 
 ./defi-cli stop
