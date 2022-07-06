@@ -188,7 +188,7 @@ func generateDockerfile(tmpl *template.Template, snapshot *storage.ObjectAttrs, 
 	if err != nil {
 		panic(err)
 	}
-	err = OSCopyFile(defiCli, filepath.Join(snapshotDir, "defid-cli"))
+	err = OSCopyFile(defiCli, filepath.Join(snapshotDir, "defi-cli"))
 	if err != nil {
 		panic(err)
 	}
