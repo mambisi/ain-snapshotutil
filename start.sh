@@ -6,11 +6,14 @@ attempts=0
 
 ./defid -daemon -stop-block="$STOP_BLOCK_P"
 sleep 30
-while [ $block -lt "$STOP_BLOCK" ]; do
+while [ $block -lt $STOP_BLOCK ]; do
+  if [ "$block" -ge "$STOP_BLOCK" ]; then
+        break
+  fi
   sleep 1
   if [ $attempts -gt 1200 ]; then
     echo "Node Stuck After $attempts Recovery Attempt"
-    exit 1
+    break
   fi
   h=$(./defi-cli getblockcount)
   b=${h:-$block}
@@ -25,6 +28,9 @@ while [ $block -lt "$STOP_BLOCK" ]; do
   fi
   block=${b:-$block}
   echo "===> Block Height [$block/$STOP_BLOCK]"
+  if [ "$block" -ge "$STOP_BLOCK" ]; then
+      break
+  fi
 done
 
 ./defi-cli stop
