@@ -4,22 +4,22 @@ STOP_BLOCK_P=$((STOP_BLOCK + 5))
 STOP_BLOCK_T=$((STOP_BLOCK + 0))
 block=0
 attempts=0
-
+maxattempts=100
 ./defid -daemon -stop-block="$STOP_BLOCK_P"
 sleep 30
 while [ "$block" -lt "$STOP_BLOCK_T" ]; do
   sleep 1
-  if [ $attempts -gt 1200 ]; then
+  if [ $attempts -gt $maxattempts ]; then
     echo "Node Stuck After $attempts Recovery Attempt"
     #TODO: download snapshot prior to current snapshot and sync
-    break
+    exit 1
   fi
   h=$(./defi-cli getblockcount)
   b=${h:-$block}
   if [ "$block" -eq "$b" ]; then
     attempts=$((attempts + 1))
     # revive defid
-    echo "===> Attempt[$attempts/1200] to revive Defid"
+    echo "===> Attempt[$attempts/$maxattempts] to revive Defid"
     ./defid -daemon -stop-block="$STOP_BLOCK_P"
     sleep 10
   else
