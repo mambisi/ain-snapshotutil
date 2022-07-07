@@ -1,15 +1,13 @@
 #!/bin/bash
 echo "Syncing to block height: $STOP_BLOCK"
 STOP_BLOCK_P=$((STOP_BLOCK + 5))
+STOP_BLOCK_T=$((STOP_BLOCK + 0))
 block=0
 attempts=0
 
 ./defid -daemon -stop-block="$STOP_BLOCK_P"
 sleep 30
-while [ $block -lt $STOP_BLOCK ]; do
-  if [ "$block" -ge "$STOP_BLOCK" ]; then
-        break
-  fi
+while [ "$block" -lt "$STOP_BLOCK_T" ]; do
   sleep 1
   if [ $attempts -gt 1200 ]; then
     echo "Node Stuck After $attempts Recovery Attempt"
@@ -27,9 +25,9 @@ while [ $block -lt $STOP_BLOCK ]; do
     attempts=0
   fi
   block=${b:-$block}
-  echo "===> Block Height [$block/$STOP_BLOCK]"
-  if [ "$block" -ge "$STOP_BLOCK" ]; then
-      break
+  echo "===> Block Height [$block/$STOP_BLOCK_T]"
+  if [ "$block" -ge "$STOP_BLOCK_T" ]; then
+    break
   fi
 done
 
