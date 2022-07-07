@@ -48,6 +48,6 @@ func TestParseRangeComma(t *testing.T) {
 	if p.max != math.MaxUint64 {
 		t.Failed()
 	}
-	assert.Equal(t, p.list, &map[uint64]int{2: 0, 4: 1, 10: 2})
+	assert.Equal(t, p.dict, &map[uint64]int{2: 0, 4: 1, 10: 2})
 
 }

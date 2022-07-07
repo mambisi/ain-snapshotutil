@@ -9,12 +9,12 @@ import (
 type Range struct {
 	min  uint64
 	max  uint64
-	list *map[uint64]int
+	dict *map[uint64]int
 }
 
 func (r *Range) InRange(i uint64) bool {
-	if r.list != nil {
-		_, ok := (*(r.list))[i]
+	if r.dict != nil {
+		_, ok := (*(r.dict))[i]
 		return ok
 	} else {
 		return i >= r.min && i <= r.max
@@ -27,7 +27,7 @@ func ParseRange(s string) (*Range, error) {
 		var r = Range{
 			min:  0,
 			max:  math.MaxUint64,
-			list: nil,
+			dict: nil,
 		}
 		res := strings.SplitN(s, "..", 2)
 		if len(res[0]) > 0 {
@@ -52,7 +52,7 @@ func ParseRange(s string) (*Range, error) {
 		var r = Range{
 			min:  0,
 			max:  math.MaxUint64,
-			list: nil,
+			dict: nil,
 		}
 		res := strings.Split(s, ",")
 		if len(res) > 0 {
@@ -67,7 +67,7 @@ func ParseRange(s string) (*Range, error) {
 				}
 				m[uint64(val)] = i
 			}
-			r.list = &m
+			r.dict = &m
 		}
 		return &r, nil
 	}
