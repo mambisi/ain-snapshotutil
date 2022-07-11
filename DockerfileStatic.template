@@ -1,0 +1,13 @@
+FROM ubuntu
+WORKDIR node
+ARG volume_name
+RUN useradd --create-home defi && \
+    mkdir -p "/${volume_name}" && \
+    chown defi:defi "/${volume_name}" && \
+    ln -s "/${volume_name}" /home/defi/.defi
+RUN adduser defi sudo
+ADD snapshot.tar.gz "/${volume_name}"
+RUN chown -R defi:defi "/${volume_name}"
+VOLUME ["/${volume_name}"]
+USER defi:defi
+ENTRYPOINT ["echo"]

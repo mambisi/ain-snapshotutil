@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"io"
 	"log"
+	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -60,32 +61,22 @@ func main() {
 	}
 
 	outDir := flag.String("out-dir", filepath.Join(workingDir, "docker"), "docker output directory")
-	serviceFile := flag.String("service-file", os.Getenv("SERVICE_FILE"), "gcp service file")
-	exec := flag.String("defid", "", "defid executable location")
+	defidExec := flag.String("defid", "", "defid executable location")
 	downloadSnap := flag.Bool("download", false, "download snapshots")
-	r := flag.String("range", "..", "snapshot range eg. 100000..500000 or specific snapshots eg. 100000,400000,600000")
+	static := flag.Bool("static", false, "download snapshots")
+	minHeight := flag.Uint64("min-height", 0, "minimum snapshot height")
+	maxHeight := flag.Uint64("max-height", math.MaxUint64, "minimum snapshot height")
 	nBlocks := flag.Uint64("nblocks", 50000, "number of block to sync to from snapshot height")
-	cli := flag.String("deficli", "", "defid-cli executable location")
+	defiCliExec := flag.String("deficli", "", "defid-cli executable location")
 	flag.Parse()
 
 	ctx := context.Background()
-	client, err := storage.NewClient(ctx, option.WithCredentialsFile(*serviceFile))
-	if err != nil {
-		panic(err)
-	}
-	pRange, err := ParseRange(*r)
+	client, err := storage.NewClient(ctx, option.WithCredentialsFile(os.Getenv("SERVICE_FILE")))
 	if err != nil {
 		panic(err)
 	}
 	teamDropBucket := client.Bucket("team-drop")
-	relOutDir, err := filepath.Rel(workingDir, *outDir)
-	var rootDockerDir string
-	if err == nil {
-		rootDockerDir = relOutDir
-	} else {
-		rootDockerDir = *outDir
-	}
-
+	rootDockerDir := *outDir
 	err = os.MkdirAll(rootDockerDir, os.ModePerm)
 	if err != nil {
 		panic(err)
@@ -94,18 +85,27 @@ func main() {
 	it := teamDropBucket.Objects(ctx, &storage.Query{Prefix: "master-datadir/datadir-", IncludeTrailingDelimiter: false})
 	composeFile := NewComposeFile()
 	var wg sync.WaitGroup
-	var port = 8000
-
-	b, err := os.ReadFile(filepath.Join(workingDir, "Dockerfile.template"))
-	if err != nil {
-		panic(err)
+	var port = 3000
+	var b []byte
+	if *static {
+		b, err = os.ReadFile(filepath.Join(workingDir, "Dockerfile.template"))
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		b, err = os.ReadFile(filepath.Join(workingDir, "DockerfileStatic.template"))
+		if err != nil {
+			panic(err)
+		}
 	}
+
 	tmpl, err := template.New("test").Parse(string(b))
 	if err != nil {
 		panic(err)
 	}
 
 	for {
+
 		snapshot, err := it.Next()
 		if err != nil {
 			break
@@ -116,61 +116,62 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		if !pRange.InRange(uint64(startBlock)) {
-			continue
-		}
-		stopBlock := startBlock + int(*nBlocks) + 1
-		buildConfig := NewBuildConfigBuilder().
-			Context(fmt.Sprintf("./%s", snapshotName)).
-			WithArg("volume_name", snapshotName).
-			Build()
 
-		service := Service{
-			Build: buildConfig,
+		var a TemplateArgs
+
+		if !*static {
+			if uint64(startBlock) < *minHeight || uint64(startBlock) > *maxHeight {
+				continue
+			}
+			stopBlock := startBlock + int(*nBlocks) + 5
+			buildConfig := NewBuildConfigBuilder().
+				Context(fmt.Sprintf("./%s", snapshotName)).
+				WithArg("volume_name", snapshotName).
+				Build()
+
+			service := Service{
+				Build: buildConfig,
+			}
+			service.Ports = []Port{NewPort(8554, uint(port))}
+			service.Deploy = DeployConfig{
+				RestartPolicy: RestartPolicy{
+					Condition:   "on-failure",
+					Delay:       "10s",
+					MaxAttempts: 40,
+					Window:      "10s",
+				},
+			}
+			port++
+			composeFile.AddService(snapshotName, service)
+			a = TemplateArgs{StopBlock: uint(stopBlock)}
 		}
-		service.Ports = []Port{NewPort(8554, uint(port))}
-		service.Deploy = DeployConfig{
-			RestartPolicy: RestartPolicy{
-				Condition:   "on-failure",
-				Delay:       "10s",
-				MaxAttempts: 40,
-				Window:      "10s",
-			},
-		}
-		port++
-		composeFile.AddService(snapshotName, service)
+
 		wg.Add(1)
-		ctx = context.WithValue(ctx, "workingDir", workingDir)
-		ctx = context.WithValue(ctx, "rootDir", rootDockerDir)
-
-		args := TemplateArgs{StopBlock: uint(stopBlock)}
 		go func() {
 			defer wg.Done()
-			generateDockerContainer(ctx, snapshot, teamDropBucket, tmpl, args, *exec, *cli, *downloadSnap)
+			generateDockerfile(tmpl, snapshot, *defidExec, *defiCliExec, *static, *downloadSnap, a, teamDropBucket, ctx, workingDir, rootDockerDir)
 		}()
 
 	}
 	wg.Wait()
-	out, err := yaml.Marshal(composeFile)
-	if err != nil {
-		panic(err)
-	}
-	dockerComposeFile, err := os.Create(filepath.Join(rootDockerDir, "docker-compose.yml"))
-	defer dockerComposeFile.Close()
-	w := bufio.NewWriter(dockerComposeFile)
-	_, err = w.Write(out)
-	if err != nil {
-		panic(err)
-	}
-	err = w.Flush()
-	if err != nil {
-		panic(err)
-	}
 
-	println()
-	println("Done! next steps..")
-	println("	$ cd", rootDockerDir)
-	println("	$ docker compose up")
+	if !*static {
+		out, err := yaml.Marshal(composeFile)
+		if err != nil {
+			panic(err)
+		}
+		dockerComposeFile, err := os.Create(filepath.Join(rootDockerDir, "docker-compose.yml"))
+		defer dockerComposeFile.Close()
+		w := bufio.NewWriter(dockerComposeFile)
+		_, err = w.Write(out)
+		if err != nil {
+			panic(err)
+		}
+		err = w.Flush()
+		if err != nil {
+			panic(err)
+		}
+	}
 
 }
 
@@ -185,15 +186,13 @@ func Exists(name string) (bool, error) {
 	return false, err
 }
 
-func generateDockerContainer(ctx context.Context, snapshot *storage.ObjectAttrs, teamDropBucket *storage.BucketHandle, tmpl *template.Template, args TemplateArgs, exec, cli string, download bool) {
-	var workingDir = ctx.Value("workingDir").(string)
-	var rootDir = ctx.Value("rootDir").(string)
+func generateDockerfile(tmpl *template.Template, snapshot *storage.ObjectAttrs, defidExec, defiCli string, downloadSnap bool, static bool, args TemplateArgs, teamDropBucket *storage.BucketHandle, ctx context.Context, workingDir string, rootDir string) {
 	snapshotDir := filepath.Join(rootDir, BaseName(snapshot.Name))
 	err := os.MkdirAll(snapshotDir, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
-	if download {
+	if downloadSnap {
 		snapshotObj := teamDropBucket.Object(snapshot.Name)
 		// Download snapshot, TODO : use aria2 to download snapshots
 		snapshotFilePath := filepath.Join(snapshotDir, "snapshot.tar.gz")
@@ -214,17 +213,19 @@ func generateDockerContainer(ctx context.Context, snapshot *storage.ObjectAttrs,
 			panic(err)
 		}
 	}
-	err = OSCopyFile(exec, filepath.Join(snapshotDir, "defid"))
-	if err != nil {
-		panic(err)
-	}
-	err = OSCopyFile(cli, filepath.Join(snapshotDir, "defi-cli"))
-	if err != nil {
-		panic(err)
-	}
-	err = OSCopyFile(filepath.Join(workingDir, "start.sh"), filepath.Join(snapshotDir, "start.sh"))
-	if err != nil {
-		panic(err)
+	if !static {
+		err = OSCopyFile(defidExec, filepath.Join(snapshotDir, "defid"))
+		if err != nil {
+			panic(err)
+		}
+		err = OSCopyFile(defiCli, filepath.Join(snapshotDir, "defi-cli"))
+		if err != nil {
+			panic(err)
+		}
+		err = OSCopyFile(filepath.Join(workingDir, "start.sh"), filepath.Join(snapshotDir, "start.sh"))
+		if err != nil {
+			panic(err)
+		}
 	}
 	dockerFilePath := filepath.Join(snapshotDir, "Dockerfile")
 	dockerFile, err := os.Create(dockerFilePath)
