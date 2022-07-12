@@ -95,12 +95,12 @@ func main() {
 	var port = 3000
 	var b []byte
 	if *static {
-		b, err = os.ReadFile(filepath.Join(workingDir, "Dockerfile.template"))
+		b, err = os.ReadFile(filepath.Join(workingDir, "DockerfileStatic.template"))
 		if err != nil {
 			panic(err)
 		}
 	} else {
-		b, err = os.ReadFile(filepath.Join(workingDir, "DockerfileStatic.template"))
+		b, err = os.ReadFile(filepath.Join(workingDir, "Dockerfile.template"))
 		if err != nil {
 			panic(err)
 		}
