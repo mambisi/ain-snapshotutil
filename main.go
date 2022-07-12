@@ -66,6 +66,7 @@ func main() {
 	static := flag.Bool("static", false, "download snapshots")
 	minHeight := flag.Uint64("min-height", 0, "minimum snapshot height")
 	maxHeight := flag.Uint64("max-height", math.MaxUint64, "minimum snapshot height")
+	r := flag.String("range", "..", "snapshot range eg. 100000..500000 or specific snapshots eg. 100000,400000,600000")
 	nBlocks := flag.Uint64("nblocks", 50000, "number of block to sync to from snapshot height")
 	defiCliExec := flag.String("deficli", "", "defid-cli executable location")
 	flag.Parse()
@@ -75,6 +76,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	pRange, err := ParseRange(*r)
+	if err != nil {
+		panic(err)
+	}
+
 	teamDropBucket := client.Bucket("team-drop")
 	rootDockerDir := *outDir
 	err = os.MkdirAll(rootDockerDir, os.ModePerm)
@@ -117,6 +124,9 @@ func main() {
 			panic(err)
 		}
 
+		if !pRange.InRange(uint64(startBlock)) {
+			continue
+		}
 		var a TemplateArgs
 
 		if !*static {
