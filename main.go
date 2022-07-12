@@ -51,6 +51,7 @@ func OSCopyFile(src, dst string) error {
 
 type TemplateArgs struct {
 	StopBlock uint
+	Volume    string
 }
 
 func main() {
@@ -156,10 +157,13 @@ func main() {
 			a = TemplateArgs{StopBlock: uint(stopBlock)}
 		}
 
+		println("Domnload ", *downloadSnap)
+		a = TemplateArgs{Volume: snapshotName}
+
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			generateDockerfile(tmpl, snapshot, *defidExec, *defiCliExec, *static, *downloadSnap, a, teamDropBucket, ctx, workingDir, rootDockerDir)
+			generateDockerfile(tmpl, snapshot, *defidExec, *defiCliExec, *downloadSnap, *static, a, teamDropBucket, ctx, workingDir, rootDockerDir)
 		}()
 
 	}
@@ -203,6 +207,7 @@ func generateDockerfile(tmpl *template.Template, snapshot *storage.ObjectAttrs, 
 		panic(err)
 	}
 	if downloadSnap {
+		println("Donwloading Snapshot")
 		snapshotObj := teamDropBucket.Object(snapshot.Name)
 		// Download snapshot, TODO : use aria2 to download snapshots
 		snapshotFilePath := filepath.Join(snapshotDir, "snapshot.tar.gz")

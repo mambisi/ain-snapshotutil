@@ -1,13 +1,13 @@
 FROM ubuntu
 WORKDIR node
-ARG volume_name
+ENV DATADIR={{.Volume}}
 RUN useradd --create-home defi && \
-    mkdir -p "/${volume_name}" && \
-    chown defi:defi "/${volume_name}" && \
-    ln -s "/${volume_name}" /home/defi/.defi
+    mkdir -p "/{{.Volume}}" && \
+    chown defi:defi "/{{.Volume}}" && \
+    ln -s "/{{.Volume}}" /home/defi/.defi
 RUN adduser defi sudo
-ADD snapshot.tar.gz "/${volume_name}"
-RUN chown -R defi:defi "/${volume_name}"
-VOLUME ["/${volume_name}"]
+ADD snapshot.tar.gz "/{{.Volume}}"
+RUN chown -R defi:defi "/{{.Volume}}"
+VOLUME ["/{{.Volume}}"]
 USER defi:defi
-ENTRYPOINT ["echo"]
+ENTRYPOINT ["echo", "hello {{.Volume}}"]
