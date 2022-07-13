@@ -5,6 +5,6 @@ do
     dockerfile=$FILE
     echo "$tag"
     echo "$dockerfile"
-    docker build -t $tag -f "$dockerfile"
-    docker tag "$tag" "$HOST/$PROECTID/$tag"
+    docker build -t $tag "$(dirname "$FILE")"
+    docker tag "$tag" "$HOST/$PROJECTID/$tag"
 done
