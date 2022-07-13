@@ -157,7 +157,6 @@ func main() {
 			a = TemplateArgs{StopBlock: uint(stopBlock)}
 		}
 
-		println("Domnload ", *downloadSnap)
 		a = TemplateArgs{Volume: snapshotName}
 
 		wg.Add(1)
@@ -207,7 +206,6 @@ func generateDockerfile(tmpl *template.Template, snapshot *storage.ObjectAttrs, 
 		panic(err)
 	}
 	if downloadSnap {
-		println("Donwloading Snapshot")
 		snapshotObj := teamDropBucket.Object(snapshot.Name)
 		// Download snapshot, TODO : use aria2 to download snapshots
 		snapshotFilePath := filepath.Join(snapshotDir, "snapshot.tar.gz")
