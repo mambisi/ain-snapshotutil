@@ -1,7 +1,7 @@
 FROM ubuntu
 WORKDIR node
-ENV DATADIR=/{{.Volume}}
+ENV DATADIR={{.Volume}}
 RUN apt install -y wget
-RUN mkdir -p "/{{.Volume}}"
-ADD snapshot.tar.gz "/{{.Volume}}"
+RUN mkdir -p "{{.Volume}}"
+ADD snapshot.tar.gz "{{.Volume}}"
 ENTRYPOINT ["echo", "hello {{.Volume}}"]
