@@ -7,4 +7,5 @@ do
     echo "$dockerfile"
     docker build -t $tag "$(dirname "$FILE")"
     docker tag "$tag" "$HOST/$PROJECTID/$tag"
+    docker push "$HOST/$PROJECTID/$tag"
 done
